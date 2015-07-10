@@ -1,0 +1,91 @@
+#include <imu.h>
+
+#include <LSM303DLH.h>
+#include <LiquidCrystal.h>
+#include <Wire.h>
+#include <math.h>
+
+
+
+// define the compass class
+LSM303DLH compass;
+// initialize the library with the numbers of the interface pins
+LiquidCrystal lcd(2, 3, 4, 5, 6, 7);
+vector acc,mag;
+
+void setup() 
+{
+   // set up the LCD's number of columns and rows: 
+  lcd.begin(20, 4);
+  lcd.print("Heading:");  
+  
+  Serial.begin(38400);
+  Wire.begin();
+  compass.enable();    // setiing up for 50hz acc data rate 30 Hz mag data rate, +-2G acc range 
+  pinMode(13, OUTPUT);  
+ 
+  
+  // Calibration values. Use the serial example program to get the values for
+  // your compass.
+//  compass.m_max.x = +388; compass.m_max.y = +578; compass.m_max.z = 453;
+//  compass.m_min.x = -711; compass.m_min.y = -533; compass.m_min.z = -510; 
+
+  compass.m_max.x = +372; compass.m_max.y = +571; compass.m_max.z = 462;
+  compass.m_min.x = -719; compass.m_min.y = -517; compass.m_min.z = -466; 
+  
+  compass.a_max.x = +1060; compass.a_max.y = +1000; compass.a_max.z = 1074;
+  compass.a_min.x = -1015; compass.a_min.y = -1060; compass.a_min.z = -1014; 
+}
+
+// Num_Samp has to be divisble by 2
+#define Num_Samp 2
+void loop() {
+  
+  int heading;
+  quat *R_estimate = NULL; 
+  float dt = 0.05;
+  int i;
+
+  
+  vector_clear(&acc);
+  vector_clear(&mag);
+  
+  for( i = 0; i<Num_Samp; i++)
+  {
+    compass.read_acc(false);
+    vector_sum (&acc, &compass.a);
+   
+   if (i%2 == 0)  // magnetometer has 30 hz data rate -- read only every other time 
+   {
+      compass.read_mag(false);
+      vector_sum (&mag, &compass.m);
+   }
+   delay(20);    // 20 ms interval == 50 hz
+  }
+
+  //digitalWrite(13,HIGH);   // set the LED on 
+  vector_scale(&acc,i);
+  vector_scale(&mag,i/2);
+ 
+  heading = compass.heading(&acc,&mag);
+  //IMU_Update( R_estimate, dt );
+ 
+  Serial.println(heading);
+  lcd.setCursor(0, 1);
+  
+  // if the accelerometer reports a dynamic acceleartion ( i.e not 1G total) then we invalidate the result 
+  /*
+  if (heading < 0 )
+    lcd.print("---");
+  else
+     lcd.print(heading);
+  lcd.print("   ");
+
+  delay(50);
+   */
+  digitalWrite(13, LOW);   // set the LED off
+
+ 
+ 
+}
+
